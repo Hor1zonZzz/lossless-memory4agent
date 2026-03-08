@@ -1,4 +1,3 @@
-import { resolveLcmConfig } from "./db/config.js";
 import type { LcmDependencies } from "./types.js";
 
 export type LcmSummarizeOptions = {
@@ -675,11 +674,10 @@ export async function createLcmSummarizeFromLegacyParams(params: {
 
   const apiKey = params.deps.getApiKey(provider, model);
 
-  const runtimeLcmConfig = resolveLcmConfig();
   const condensedTargetTokens =
-    Number.isFinite(runtimeLcmConfig.condensedTargetTokens) &&
-    runtimeLcmConfig.condensedTargetTokens > 0
-      ? runtimeLcmConfig.condensedTargetTokens
+    Number.isFinite(params.deps.config.condensedTargetTokens) &&
+    params.deps.config.condensedTargetTokens > 0
+      ? params.deps.config.condensedTargetTokens
       : DEFAULT_CONDENSED_TARGET_TOKENS;
 
   return async (
