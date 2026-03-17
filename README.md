@@ -1,10 +1,6 @@
 # lossless-memory4agent
 
 > **Fork Notice**: This project is forked from [Martian-Engineering/lossless-claw](https://github.com/Martian-Engineering/lossless-claw) and refactored into a **standalone, framework-agnostic long-term memory SDK** for AI agents. All OpenClaw plugin coupling, sub-agent expansion system, and framework-specific dependencies have been removed. The core DAG-based summarization engine is preserved intact.
->
-> **Author**: Hor1zonZzz (461986128@qq.com)
->
-> **Original Author**: Josh Lehman (josh@martian.engineering), [Martian Engineering](https://github.com/Martian-Engineering)
 
 ---
 
