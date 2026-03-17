@@ -1,146 +1,38 @@
 /**
- * Core type definitions for the LCM plugin.
- *
- * These types define the contracts between LCM and OpenClaw core,
- * abstracting away direct imports from core internals.
+ * Core type definitions for the lossless-memory4agent SDK.
  */
 
 import type { LcmConfig } from "./db/config.js";
+import type { LcmSummarizeFn } from "./summarize.js";
 
 /**
- * Minimal LLM completion interface needed by LCM for summarization.
- * Matches the signature of completeSimple from @mariozechner/pi-ai.
+ * A message to be stored and managed by the memory engine.
+ * Framework-agnostic: works with any agent framework's message format.
  */
-export type CompletionContentBlock = {
-  type: string;
-  text?: string;
-  [key: string]: unknown;
-};
-
-export type CompletionResult = {
-  content: CompletionContentBlock[];
-  [key: string]: unknown;
-};
-
-export type CompleteFn = (params: {
-  provider?: string;
-  model: string;
-  apiKey?: string;
-  providerApi?: string;
-  authProfileId?: string;
-  agentDir?: string;
-  runtimeConfig?: unknown;
-  messages: Array<{ role: string; content: unknown }>;
-  system?: string;
-  maxTokens: number;
-  temperature?: number;
-  reasoning?: string;
-}) => Promise<CompletionResult>;
-
-/**
- * Gateway RPC call interface.
- */
-export type CallGatewayFn = (params: {
-  method: string;
-  params?: Record<string, unknown>;
-  timeoutMs?: number;
-}) => Promise<unknown>;
-
-/**
- * Model resolution function — resolves model aliases and defaults.
- * When providerHint is supplied, it takes precedence over env/defaults.
- */
-export type ResolveModelFn = (modelRef?: string, providerHint?: string) => {
-  provider: string;
-  model: string;
+export type MemoryMessage = {
+  role: "user" | "assistant" | "system" | "tool" | "toolResult";
+  content: unknown;
+  toolCallId?: string;
+  toolName?: string;
+  isError?: boolean;
 };
 
 /**
- * API key resolution function.
+ * Minimal dependencies for the memory engine.
+ * Only a summarize callback is required from the host.
  */
-export type ApiKeyLookupOptions = {
-  profileId?: string;
-  preferredProfile?: string;
-};
-
-export type GetApiKeyFn = (
-  provider: string,
-  model: string,
-  options?: ApiKeyLookupOptions,
-) => Promise<string | undefined>;
-
-export type RequireApiKeyFn = (
-  provider: string,
-  model: string,
-  options?: ApiKeyLookupOptions,
-) => Promise<string>;
-
-/**
- * Session key utilities.
- */
-export type ParseAgentSessionKeyFn = (sessionKey: string) => {
-  agentId: string;
-  suffix: string;
-} | null;
-
-export type IsSubagentSessionKeyFn = (sessionKey: string) => boolean;
-
-/**
- * Dependencies injected into the LCM engine at registration time.
- * These replace all direct imports from OpenClaw core.
- */
-export interface LcmDependencies {
-  /** LCM configuration (from env vars + plugin config) */
+export interface MemoryDependencies {
+  /** Memory engine configuration */
   config: LcmConfig;
 
-  /** LLM completion function for summarization */
-  complete: CompleteFn;
+  /**
+   * Summarize function — the only external dependency.
+   * The host provides this to control which LLM and parameters are used.
+   */
+  summarize: LcmSummarizeFn;
 
-  /** Gateway RPC call function (for subagent spawning, session ops) */
-  callGateway: CallGatewayFn;
-
-  /** Resolve model alias to provider/model pair */
-  resolveModel: ResolveModelFn;
-
-  /** Get API key for a provider/model pair */
-  getApiKey: GetApiKeyFn;
-
-  /** Require API key (throws if missing) */
-  requireApiKey: RequireApiKeyFn;
-
-  /** Parse agent session key into components */
-  parseAgentSessionKey: ParseAgentSessionKeyFn;
-
-  /** Check if a session key is a subagent key */
-  isSubagentSessionKey: IsSubagentSessionKeyFn;
-
-  /** Normalize an agent ID */
-  normalizeAgentId: (id?: string) => string;
-
-  /** Build system prompt for subagent sessions */
-  buildSubagentSystemPrompt: (params: {
-    depth: number;
-    maxDepth: number;
-    taskSummary?: string;
-  }) => string;
-
-  /** Read the latest assistant reply from a session's messages */
-  readLatestAssistantReply: (messages: unknown[]) => string | undefined;
-
-  /** Sanitize tool use/result pairing in message arrays */
-  // sanitizeToolUseResultPairing removed — now imported directly in assembler from transcript-repair.ts
-
-  /** Resolve the OpenClaw agent directory */
-  resolveAgentDir: () => string;
-
-  /** Resolve runtime session id from an agent session key */
-  resolveSessionIdFromSessionKey: (sessionKey: string) => Promise<string | undefined>;
-
-  /** Agent lane constant for subagents */
-  agentLaneSubagent: string;
-
-  /** Logger */
-  log: {
+  /** Optional logger (defaults to console) */
+  log?: {
     info: (msg: string) => void;
     warn: (msg: string) => void;
     error: (msg: string) => void;

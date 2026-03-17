@@ -1,4 +1,3 @@
-import type { ContextEngine } from "openclaw/plugin-sdk";
 import { sanitizeToolUseResultPairing } from "./transcript-repair.js";
 import type {
   ConversationStore,
@@ -6,8 +5,9 @@ import type {
   MessageRole,
 } from "./store/conversation-store.js";
 import type { SummaryStore, ContextItemRecord, SummaryRecord } from "./store/summary-store.js";
+import type { MemoryMessage } from "./types.js";
 
-type AgentMessage = Parameters<ContextEngine["ingest"]>[0]["message"];
+type AgentMessage = MemoryMessage;
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -65,19 +65,12 @@ function buildSystemPromptAddition(summarySignals: SummaryPromptSignal[]): strin
     "",
     "Summaries above are compressed context — maps to details, not the details themselves.",
     "",
-    "**Recall priority:** LCM tools first, then qmd (for Granola/Limitless/pre-LCM data), then memory_search as last resort.",
+    "**Recall methods:**",
+    "1. `grep()` — search by regex or full-text across messages and summaries",
+    "2. `describe()` — inspect a specific summary by ID",
+    "3. `expand()` — traverse DAG to retrieve child summaries and source messages",
     "",
-    "**Tool escalation:**",
-    "1. `lcm_grep` — search by regex or full-text across messages and summaries",
-    "2. `lcm_describe` — inspect a specific summary (cheap, no sub-agent)",
-    "3. `lcm_expand_query` — deep recall: spawns bounded sub-agent, expands DAG, returns answer with cited summary IDs (~120s, don't ration it)",
-    "",
-    "**`lcm_expand_query` usage** — two patterns (always requires `prompt`):",
-    "- With IDs: `lcm_expand_query(summaryIds: [\"sum_xxx\"], prompt: \"What config changes were discussed?\")`",
-    "- With search: `lcm_expand_query(query: \"database migration\", prompt: \"What strategy was decided?\")`",
-    "- Optional: `maxTokens` (default 2000), `conversationId`, `allConversations: true`",
-    "",
-    "**Summaries include \"Expand for details about:\" footers** listing compressed specifics. Use `lcm_expand_query` with that summary's ID to retrieve them.",
+    "**Summaries include \"Expand for details about:\" footers** listing compressed specifics. Use `expand()` with that summary's ID to retrieve them.",
   );
 
   // Precision/evidence rules — always present but stronger when heavily compacted
@@ -87,16 +80,9 @@ function buildSystemPromptAddition(summarySignals: SummaryPromptSignal[]): strin
       "**\u26a0 Deeply compacted context — expand before asserting specifics.**",
       "",
       "Default recall flow for precision work:",
-      "1) `lcm_grep` to locate relevant summary/message IDs",
-      "2) `lcm_expand_query` with a focused prompt",
+      "1) `grep()` to locate relevant summary/message IDs",
+      "2) `expand()` to traverse the DAG for details",
       "3) Answer with citations to summary IDs used",
-      "",
-      "**Uncertainty checklist (run before answering):**",
-      "- Am I making exact factual claims from a condensed summary?",
-      "- Could compaction have omitted a crucial detail?",
-      "- Would this answer fail if the user asks for proof?",
-      "",
-      "If yes to any \u2192 expand first.",
       "",
       "**Do not guess** exact commands, SHAs, file paths, timestamps, config values, or causal claims from condensed summaries. Expand first or state that you need to expand.",
     );
